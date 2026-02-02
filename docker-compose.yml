@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: crypto-bot-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-database}
+      - POSTGRES_USER=${POSTGRES_USER:-user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    networks:
+      - crypto-bot-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cryptobot}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  crypto-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: crypto-bot
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Используем переменные окружения из .env файла
+    env_file:
+      - .env
+    # Или можно использовать переменные напрямую (раскомментируйте, если нужно):
+    # environment:
+    #   - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+    #   - COINMARKETCAP_API_KEY=${COINMARKETCAP_API_KEY}
+    #   - DATABASE_URL=${DATABASE_URL}
+    # Раскомментируйте для сохранения логов в файл
+    # volumes:
+    #   - ./logs:/app/logs
+    networks:
+      - crypto-bot-network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  crypto-bot-network:
+    driver: bridge

@@ -57,7 +57,86 @@ go get github.com/joho/godotenv
 import _ "github.com/joho/godotenv/autoload"
 ```
 
-### Вариант 3: Запуск с Docker
+### Вариант 3: Запуск с Docker Compose (рекомендуется)
+
+1. Создайте файл `.env` в корне проекта:
+```bash
+# Telegram Bot
+TELEGRAM_BOT_TOKEN=your_token_here
+COINMARKETCAP_API_KEY=your_api_key_here
+
+# PostgreSQL Database
+POSTGRES_DB=
+POSTGRES_USER=
+POSTGRES_PASSWORD=
+POSTGRES_PORT=
+
+# Database Connection String (опционально, можно использовать для подключения из приложения)
+DATABASE_URL=postgres://cryptobot:changeme@postgres:5432/cryptobot?sslmode=disable
+```
+
+2. Запустите контейнеры (PostgreSQL и бот):
+```bash
+docker-compose up -d
+```
+
+3. Просмотр логов:
+```bash
+# Все сервисы
+docker-compose logs -f
+
+# Только бот
+docker-compose logs -f crypto-bot
+
+# Только PostgreSQL
+docker-compose logs -f postgres
+```
+
+4. Остановка контейнеров:
+```bash
+docker-compose down
+```
+
+5. Остановка с удалением volumes (удалит данные БД):
+```bash
+docker-compose down -v
+```
+
+6. Перезапуск после изменений:
+```bash
+docker-compose up -d --build
+```
+
+**Примечание:** Данные PostgreSQL сохраняются в Docker volume `postgres_data` и не будут удалены при остановке контейнеров (если не использовать флаг `-v`).
+
+**Подключение к PostgreSQL:**
+```bash
+# Из хоста (если порт проброшен)
+psql -h localhost -p 5432 -U cryptobot -d cryptobot
+
+# Из другого контейнера в той же сети
+psql -h postgres -U cryptobot -d cryptobot
+
+# Пароль можно указать через переменную окружения
+PGPASSWORD=changeme psql -h localhost -p 5432 -U cryptobot -d cryptobot
+```
+
+**Просмотр данных БД:**
+```bash
+# Список volumes
+docker volume ls
+
+# Информация о volume
+docker volume inspect cryptonotifications_postgres_data
+
+# Резервное копирование БД
+docker-compose exec postgres pg_dump -U cryptobot cryptobot > backup.sql
+
+# Восстановление БД
+docker-compose exec -T postgres psql -U cryptobot cryptobot < backup.sql
+```
+
+### Вариант 4: Запуск с Docker напрямую
 
 1. Соберите Docker образ:
 ```bash
@@ -119,13 +198,15 @@ docker rm crypto-bot
 ```
 CryptoNotifications/
 ├── Dockerfile           # Dockerfile для сборки образа
+├── docker-compose.yml   # Конфигурация Docker Compose
 ├── .dockerignore        # Игнорируемые файлы для Docker
+├── .env                 # Файл с переменными окружения (создать самостоятельно)
+├── init.sql             # SQL скрипт для инициализации БД (опционально)
 └── bot/
     ├── main.go              # Основной файл бота
     ├── coinmarketcap.go     # Модуль для работы с CoinMarketCap API
     ├── go.mod               # Файл зависимостей Go
     ├── go.sum               # Файл контрольных сумм зависимостей
-    ├── .env.example         # Пример файла конфигурации
     └── README.md            # Этот файл
 ```
 
